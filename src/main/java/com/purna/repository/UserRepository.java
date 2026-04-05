@@ -8,6 +8,6 @@ import com.purna.model.UserObj;
 @Repository
 public interface UserRepository extends JpaRepository<UserObj, Integer> {
 
-	public UserObj findByUsername(String username);
+	public UserObj findByEmail(String email);
 
 }

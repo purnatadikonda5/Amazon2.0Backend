@@ -45,7 +45,6 @@ public class WebSecurityConfig {
             )
             
             .userDetailsService(myUserDetailsService) 
-            
             .formLogin(form -> form.disable()) // we use API, not form
             
             .httpBasic(httpBasic -> httpBasic.disable());
