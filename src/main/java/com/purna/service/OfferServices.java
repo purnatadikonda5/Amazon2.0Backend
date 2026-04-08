@@ -1,5 +1,4 @@
 package com.purna.service;
-
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -30,7 +29,6 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class OfferServices {
-	
     private final OfferRepository offerRepository;
     private final ListingRepository listingRepository;
     private final ProductsRepository productsRepository;
