@@ -10,7 +10,9 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import com.purna.security.filter.JwtAuthFilter;
 import com.purna.service.MyUserDetailsService;
 
 @Configuration
@@ -19,7 +21,8 @@ public class WebSecurityConfig {
 
     @Autowired
     private MyUserDetailsService myUserDetailsService;
-
+    @Autowired
+    private JwtAuthFilter jwtfilter;
     // 🔹 Password Encoder
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -35,7 +38,7 @@ public class WebSecurityConfig {
     // 🔹 Security Filter Chain
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-
+    	
         http
             .csrf(csrf -> csrf.disable())
             
@@ -46,7 +49,7 @@ public class WebSecurityConfig {
             
             .userDetailsService(myUserDetailsService) 
             .formLogin(form -> form.disable()) // we use API, not form
-            
+            .addFilterBefore(jwtfilter,UsernamePasswordAuthenticationFilter.class)
             .httpBasic(httpBasic -> httpBasic.disable());
 
         return http.build();
