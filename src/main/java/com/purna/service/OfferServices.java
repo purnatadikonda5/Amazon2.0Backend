@@ -15,8 +15,10 @@ import com.purna.model.Product;
 import com.purna.model.UserObj;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import com.purna.model.Listing;
+import com.purna.model.Order;
 import com.purna.repository.ListingRepository;
 import com.purna.repository.OfferRepository;
+import com.purna.repository.OrderRepository;
 import com.purna.repository.ProductsRepository;
 import com.purna.repository.UserRepository;
 
@@ -33,6 +35,7 @@ public class OfferServices {
     private final ListingRepository listingRepository;
     private final ProductsRepository productsRepository;
     private final UserRepository userRepository;
+    private final OrderRepository orderRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
     /**
@@ -91,10 +94,12 @@ public class OfferServices {
         return responseDTO;
     }
 
+    @Transactional(readOnly = true)
     public Page<OfferResponseDTO> getOffersForSeller(Long sellerId, Pageable pageable) {
         return offerRepository.findBySeller_Id(sellerId, pageable).map(this::mapToResponseDTO);
     }
 
+    @Transactional(readOnly = true)
     public Page<OfferResponseDTO> getOffersForBuyer(Long buyerId, Pageable pageable) {
         return offerRepository.findByBuyer_Id(buyerId, pageable).map(this::mapToResponseDTO);
     }
@@ -117,6 +122,7 @@ public class OfferServices {
             case "accept":
                 deductInventory(offer);
                 offer.setStatus("accepted");
+                generateOrder(offer, offer.getOfferPrice());
                 break;
             case "reject":
                 offer.setStatus("rejected");
@@ -156,6 +162,7 @@ public class OfferServices {
             case "accept":
                 deductInventory(offer);
                 offer.setStatus("accepted");
+                generateOrder(offer, offer.getCounterPrice());
                 break;
             case "reject":
                 offer.setStatus("rejected");
@@ -185,6 +192,16 @@ public class OfferServices {
             listing.setStatus("sold_out");
         }
         listingRepository.save(listing);
+    }
+
+    private void generateOrder(Offer offer, Double finalPrice) {
+        Order order = Order.builder()
+                .buyer(offer.getBuyer())
+                .listing(offer.getListing())
+                .purchasePrice(finalPrice)
+                .status("completed")
+                .build();
+        orderRepository.save(order);
     }
 
     /**

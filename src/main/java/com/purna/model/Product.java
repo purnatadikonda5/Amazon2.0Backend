@@ -21,7 +21,8 @@ import jakarta.persistence.Index;
 @Builder
 @Entity
 @Table(name= "amazon_products", indexes = {
-    @Index(name = "idx_product_category", columnList = "category")
+    @Index(name = "idx_product_category", columnList = "category"),
+    @Index(name = "idx_product_title", columnList = "title")
 })
 @SQLDelete(sql = "UPDATE amazon_products SET is_deleted = true WHERE id=?")
 @SQLRestriction("is_deleted=false")

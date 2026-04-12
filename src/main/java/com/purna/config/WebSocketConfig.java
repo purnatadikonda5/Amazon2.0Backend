@@ -6,6 +6,14 @@ import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBr
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
+/**
+ * WebSocketConfig
+ *
+ * WHY USE THIS:
+ * Configures the STOMP messaging broker. Traditional HTTP is half-duplex (client requests, server responds).
+ * WebSockets provide full-duplex TCP connections so the server can push live UI updates (like direct messages 
+ * or live bargaining offers) in less than 10 milliseconds without the frontend polling the DB endlessly.
+ */
 @Configuration
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {

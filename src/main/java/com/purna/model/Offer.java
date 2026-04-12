@@ -21,7 +21,9 @@ import org.hibernate.annotations.SQLRestriction;
 @Table(name = "offers", indexes = {
     @Index(name = "idx_offer_buyer", columnList = "buyerId"),
     @Index(name = "idx_offer_seller", columnList = "sellerId"),
-    @Index(name = "idx_offer_product", columnList = "productId")
+    @Index(name = "idx_offer_product", columnList = "productId"),
+    @Index(name = "idx_offer_listing", columnList = "listingId"),
+    @Index(name = "idx_offer_status", columnList = "status")
 })
 @SQLDelete(sql = "UPDATE offers SET is_deleted = true WHERE id=?")
 @SQLRestriction("is_deleted=false")
