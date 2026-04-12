@@ -3,6 +3,7 @@ package com.purna.service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.purna.dto.OrderResponseDTO;
 import com.purna.dto.ProductResponseDTO;
@@ -29,6 +30,7 @@ public class UserServices {
     /**
      * Look up the comprehensive history of all completed purchases the buyer made.
      */
+    @Transactional(readOnly = true)
     public Page<OrderResponseDTO> getCompletedOrders(Long userId, Pageable pageable) {
         return orderRepository.findByBuyer_Id(userId, pageable).map(this::mapToOrderResponseDTO);
     }
@@ -36,6 +38,7 @@ public class UserServices {
     /**
      * Look up every listing this specific seller currently has in the market.
      */
+    @Transactional(readOnly = true)
     public Page<ListingResponseDTO> getListedItems(Long userId, Pageable pageable) {
         return listingRepository.findBySeller_IdAndIsDeletedFalse(userId, pageable).map(this::mapToListingResponseDTO);
     }

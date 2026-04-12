@@ -15,6 +15,16 @@ import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 import jakarta.persistence.Index;
 
+/**
+ * UserObj Database Entity
+ *
+ * WHY USE THIS:
+ * The foundational model for both Buyers and Sellers. It utilizes @SQLDelete and @SQLRestriction 
+ * to implement "Soft Deletion". In an advanced e-commerce system, you never physically run 'DELETE FROM'.
+ * Instead, we toggle `is_deleted = true`. This preserves financial audit trails (ACID Durability) so 
+ * Order receipts or Payment Transactions attached to this user don't suddenly throw NullPointerExceptions 
+ * or violate Database Foreign Key constraints if the user decides to close their account.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -40,5 +50,11 @@ public class UserObj {
 	
     @Builder.Default
     private Boolean isDeleted = false;
+    
+    @Builder.Default
+    private Double balance = 0.0;
+    
+    @Column(name = "razorpay_account_id")
+    private String razorpayAccountId;
 
 }

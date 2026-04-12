@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import com.purna.dto.OfferResponseDTO;
 import com.purna.dto.OfferSubmitRequestDTO;
@@ -21,6 +22,15 @@ import com.purna.service.OfferServices;
 
 import lombok.RequiredArgsConstructor;
 
+/**
+ * OfferController (Bargaining Sub-System)
+ *
+ * WHY USE THIS:
+ * Manages the "Make an Offer" business logic between buyers and sellers. 
+ * Notice that it strictly extracts IDs via `getAuthenticatedUserId()` server-side rather than trusting the 
+ * frontend UI to pass `{ "buyerId": 5 }`. This prevents "BOLA" (Broken Object Level Authorization) attacks 
+ * where Hacker A could maliciously submit an offer on behalf of User B.
+ */
 @RestController
 @RequestMapping("/api/bargain")
 @RequiredArgsConstructor
@@ -56,7 +66,7 @@ public class OfferController {
     }
 
     @PostMapping("/submit")
-    public ResponseEntity<OfferActionResponseDTO> submitOffer(@RequestBody OfferSubmitRequestDTO request) {
+    public ResponseEntity<OfferActionResponseDTO> submitOffer(@Valid @RequestBody OfferSubmitRequestDTO request) {
         Long buyerId = getAuthenticatedUserId();
         OfferResponseDTO response = offerServices.submitOffer(buyerId, request);
         return ResponseEntity.ok(new OfferActionResponseDTO("Offer submitted successfully", response));
@@ -83,14 +93,14 @@ public class OfferController {
     }
 
     @PostMapping("/update")
-    public ResponseEntity<OfferActionResponseDTO> updateOffer(@RequestBody OfferUpdateRequestDTO request) {
+    public ResponseEntity<OfferActionResponseDTO> updateOffer(@Valid @RequestBody OfferUpdateRequestDTO request) {
         Long sellerId = getAuthenticatedUserId();
         OfferResponseDTO response = offerServices.updateOffer(sellerId, request);
         return ResponseEntity.ok(new OfferActionResponseDTO("Offer updated by seller", response));
     }
 
     @PostMapping("/buyer/update")
-    public ResponseEntity<OfferActionResponseDTO> buyerUpdateOffer(@RequestBody OfferUpdateRequestDTO request) {
+    public ResponseEntity<OfferActionResponseDTO> buyerUpdateOffer(@Valid @RequestBody OfferUpdateRequestDTO request) {
         Long buyerId = getAuthenticatedUserId();
         OfferResponseDTO response = offerServices.buyerUpdateOffer(buyerId, request);
         return ResponseEntity.ok(new OfferActionResponseDTO("Buyer response recorded", response));

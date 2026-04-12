@@ -39,4 +39,13 @@ public class AuthUtil {
     public boolean validateToken(String token, String username) {
         return extractUsername(token).equals(username);
     }
+
+    public Date extractExpiration(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(key())
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .getExpiration();
+    }
 }

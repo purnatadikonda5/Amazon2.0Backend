@@ -16,6 +16,18 @@ import com.purna.service.MyUserDetailsService;
 
 import lombok.RequiredArgsConstructor;
 
+/**
+ * WebSecurityConfig
+ * 
+ * WHY USE THIS:
+ * The backbone of application security. We disable CSRF (Cross-Site Request Forgery) protections 
+ * largely because we are using stateless JWT tokens instead of Session/Cookies. It defines exactly 
+ * which URLs are public (like `/auth/**` and Swagger) and violently blocks unauthenticated traffic 
+ * from touching critical endpoints like Payment and Ordering.
+ * 
+ * The `addFilterBefore(jwtfilter)` guarantees the JWT Token is mathematically decrypted and verified 
+ * before Spring even processes the Request body, preventing payload attacks on secure endpoints.
+ */
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
@@ -46,7 +58,8 @@ public class WebSecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/auth/**").permitAll()   // login/signup open
                 .requestMatchers("/", "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**", "/webjars/**").permitAll() // swagger ui open
-                .requestMatchers(org.springframework.http.HttpMethod.GET, "/products", "/products/**").permitAll() // allow public browsing
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/products", "/api/products/**").permitAll() // allow public browsing
+                .requestMatchers("/ws/**").permitAll()     // allow websocket handshakes natively
                 .anyRequest().authenticated()              // others protected
             )
             

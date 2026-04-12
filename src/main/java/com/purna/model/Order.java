@@ -11,6 +11,17 @@ import org.hibernate.annotations.SQLRestriction;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
+/**
+ * Order Database Entity
+ *
+ * WHY USE THIS:
+ * This acts as the final irreversible Financial Ledger entry. It logically joins exactly 
+ * one User (Buyer) to exactly one Listing (which implies the Seller). 
+ * 
+ * Notice the @Index configuration: Since millions of users will retrieve their order history rapidly, 
+ * indexing `buyerId` transforms a full-table database scan into a quick O(log N) jump directly 
+ * to their specific receipts, heavily optimizing the GET /api/orders endpoint.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

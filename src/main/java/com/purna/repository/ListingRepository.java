@@ -19,4 +19,8 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
     // Allows grabbing all listings owned by a specific seller
     Page<Listing> findBySeller_IdAndIsDeletedFalse(Long sellerId, Pageable pageable);
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("SELECT l FROM Listing l WHERE l.id = :id")
+    java.util.Optional<Listing> findByIdWithPessimisticLock(@org.springframework.data.repository.query.Param("id") Long id);
+
 }
