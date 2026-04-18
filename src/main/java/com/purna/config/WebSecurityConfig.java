@@ -56,7 +56,7 @@ public class WebSecurityConfig {
             .csrf(csrf -> csrf.disable())
             
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/auth/**").permitAll()   // login/signup open
+                .requestMatchers("/auth/**", "/api/auth/**").permitAll()   // login/signup open under both mappings 
                 .requestMatchers("/", "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**", "/webjars/**").permitAll() // swagger ui open
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/products", "/api/products/**").permitAll() // allow public browsing
                 .requestMatchers("/ws/**").permitAll()     // allow websocket handshakes natively

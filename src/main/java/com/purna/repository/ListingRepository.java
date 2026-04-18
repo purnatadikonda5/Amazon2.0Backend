@@ -7,16 +7,21 @@ import org.springframework.stereotype.Repository;
 
 import com.purna.model.Listing;
 
+import org.springframework.data.jpa.repository.EntityGraph;
+
 @Repository
 public interface ListingRepository extends JpaRepository<Listing, Long> {
     
     // Allows searching for listings active globally across the site
+    @EntityGraph(attributePaths = {"product", "seller"})
     Page<Listing> findByStatusAndIsDeletedFalse(String status, Pageable pageable);
 
     // Allows users to find all listings for a specific global Product
+    @EntityGraph(attributePaths = {"product", "seller"})
     Page<Listing> findByProduct_IdAndStatusAndIsDeletedFalse(Long productId, String status, Pageable pageable);
 
     // Allows grabbing all listings owned by a specific seller
+    @EntityGraph(attributePaths = {"product", "seller"})
     Page<Listing> findBySeller_IdAndIsDeletedFalse(Long sellerId, Pageable pageable);
 
     @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)

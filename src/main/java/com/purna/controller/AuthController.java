@@ -23,7 +23,7 @@ import lombok.RequiredArgsConstructor;
  * uniquely for these endpoints (Bucket4j intercepting prior to this logic).
  */
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/api/auth")
 @RequiredArgsConstructor
 public class AuthController {
 	
@@ -52,5 +52,10 @@ public class AuthController {
         String authHeader = request.getHeader("Authorization");
         authServices.logout(authHeader);
         return ResponseEntity.ok("Successfully eradicated Active Session from the central cluster.");
+    }
+    
+    @org.springframework.web.bind.annotation.GetMapping("/check-email")
+    public ResponseEntity<Boolean> checkEmail(@org.springframework.web.bind.annotation.RequestParam String email) {
+        return ResponseEntity.ok(authServices.isEmailTaken(email));
     }
 }

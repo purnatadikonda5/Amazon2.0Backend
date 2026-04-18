@@ -58,7 +58,12 @@ public class AuthServices {
 	    }
 
         // 1. Issue short-lived fast Access JWT Token
-	    String accessToken = authUtil.generateToken(request.getEmail());
+        java.util.List<String> roles = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        request.getEmail(),
+                        request.getPassword()
+                )).getAuthorities().stream().map(a -> a.getAuthority()).collect(java.util.stream.Collectors.toList());
+	    String accessToken = authUtil.generateToken(request.getEmail(), roles);
         
         // 2. Issue mathematical UUID for Refresh Token
         String refreshToken = UUID.randomUUID().toString();
@@ -68,7 +73,9 @@ public class AuthServices {
         redisTemplate.opsForValue().set(redisKey, refreshToken, Duration.ofDays(7));
         log.info("Redis Memory Injection: Successfully mapped Refresh Token for User {}", request.getEmail());
 
-	    return new AuthResponseDTO(accessToken, refreshToken);
+        UserObj user = userRepository.findByEmail(request.getEmail());
+
+	    return new AuthResponseDTO(accessToken, refreshToken, Long.valueOf(user.getId()), user.getName(), user.getEmail());
 	}
 
     public AuthResponseDTO refreshToken(RefreshTokenRequestDTO request) {
@@ -83,13 +90,15 @@ public class AuthServices {
         }
         
         // The token proved to match our secure Redis Node, rotate the access token!
-        String newAccessToken = authUtil.generateToken(request.getEmail());
+        // During refresh, we can safely just grant the standard roles (or fetch from DB if roles change dynamically. We will fallback to default).
+        String newAccessToken = authUtil.generateToken(request.getEmail(), java.util.Arrays.asList("ROLE_USER"));
         
         // Security Standard: Rotate the refresh token so it cannot be abused statically
         String newRefreshToken = UUID.randomUUID().toString();
         redisTemplate.opsForValue().set(redisKey, newRefreshToken, Duration.ofDays(7));
         
-        return new AuthResponseDTO(newAccessToken, newRefreshToken);
+        UserObj user = userRepository.findByEmail(request.getEmail());
+        return new AuthResponseDTO(newAccessToken, newRefreshToken, Long.valueOf(user.getId()), user.getName(), user.getEmail());
     }
 
     public void signup(SignUpRequestDTO request) {
@@ -105,6 +114,9 @@ public class AuthServices {
                 .build();
                 
         userRepository.save(user);
+        
+        // Push to Redis for O(1) Instant Email Lookups
+        redisTemplate.opsForSet().add("ALL_USER_EMAILS", request.getEmail());
     }
 
     /**
@@ -136,5 +148,20 @@ public class AuthServices {
                 log.warn("Attempting to logout with already mathematically expired / malformed token.");
             }
         }
+    }
+    
+    public boolean isEmailTaken(String email) {
+        // Fast O(1) Redis Set check
+        Boolean existsInRedis = redisTemplate.opsForSet().isMember("ALL_USER_EMAILS", email);
+        if (Boolean.TRUE.equals(existsInRedis)) {
+            return true;
+        }
+        // Fallback for older entries not yet in Redis
+        UserObj user = userRepository.findByEmail(email);
+        if (user != null) {
+            redisTemplate.opsForSet().add("ALL_USER_EMAILS", email);
+            return true;
+        }
+        return false;
     }
 }

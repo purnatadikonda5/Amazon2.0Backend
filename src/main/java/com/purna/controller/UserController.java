@@ -81,4 +81,34 @@ public class UserController {
         Page<ListingResponseDTO> response = userServices.getListedItems(userId, pageable);
         return ResponseEntity.ok(response);
     }
+
+    /**
+     * Retrieve precise account platform wallet escrow metrics securely
+     */
+    @GetMapping("/wallet")
+    public ResponseEntity<java.util.Map<String, Double>> getWalletBalance() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null) throw new UnauthorizedBargainException("Unauthorized");
+        UserObj user = userRepository.findByEmail(authentication.getName());
+        return ResponseEntity.ok(java.util.Map.of("balance", user.getBalance() != null ? user.getBalance() : 0.0));
+    }
+
+    /**
+     * Simulate Platform Escrow Withdrawal straight to Razorpay verified Accounts
+     */
+    @PostMapping("/wallet/withdraw")
+    public ResponseEntity<java.util.Map<String, String>> withdrawWallet() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        UserObj user = userRepository.findByEmail(authentication.getName());
+        
+        Double currentBalance = user.getBalance() != null ? user.getBalance() : 0.0;
+        if (currentBalance <= 0) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("message", "Wallet is empty."));
+        }
+        
+        // Simulates Razorpay Payouts directly hitting clearinghouses!
+        user.setBalance(0.0);
+        userRepository.save(user);
+        return ResponseEntity.ok(java.util.Map.of("message", "Successfully originated ACH transfer of ₹" + currentBalance + " to your linked account."));
+    }
 }

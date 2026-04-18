@@ -7,8 +7,14 @@ import com.purna.dto.PaymentVerificationRequestDTO;
 import com.purna.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
+
+import com.purna.model.UserObj;
+import com.purna.repository.UserRepository;
+import com.purna.exception.UnauthorizedBargainException;
 
 /**
  * PaymentController
@@ -24,6 +30,21 @@ import jakarta.validation.Valid;
 public class PaymentController {
 
     private final PaymentService paymentService;
+    private final UserRepository userRepository;
+
+    private Long getAuthenticatedUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() || authentication.getName().equals("anonymousUser")) {
+            throw new UnauthorizedBargainException("Unauthorized Access: No active user session.");
+        }
+        
+        String email = authentication.getName();
+        UserObj user = userRepository.findByEmail(email);
+        if (user == null) {
+            throw new UnauthorizedBargainException("User token is valid, but account doesn't exist.");
+        }
+        return Long.valueOf(user.getId());
+    }
 
     /**
      * WHY USE THIS ENDPOINT:
@@ -32,6 +53,9 @@ public class PaymentController {
      */
     @PostMapping("/create")
     public ResponseEntity<PaymentResponseDTO> createPayment(@Valid @RequestBody PaymentRequestDTO request) {
+        // Securely override any frontend tampered Buyer ID with the actual cryptographically signed token ID!
+        request.setBuyerId(getAuthenticatedUserId());
+        
         // Guaranteed constant-time protection against redundant multi-clicks via Database ACID Isolation Limits
         PaymentResponseDTO response = paymentService.createPaymentSession(request);
         return ResponseEntity.ok(response);

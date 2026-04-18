@@ -13,4 +13,13 @@ import java.util.List;
 @NoArgsConstructor
 public class OfferListResponseDTO {
     private List<OfferResponseDTO> offers;
+    private int pageNumber;
+    private int totalPages;
+    private long totalElements;
+    private boolean last;
+    
+    // Legacy constructor wrapper for backward compatibility with List-only initialization
+    public OfferListResponseDTO(List<OfferResponseDTO> offers) {
+        this.offers = offers;
+    }
 }

@@ -16,6 +16,7 @@ public class OfferResponseDTO {
     private Double counterPrice;
     private Integer quantity;
     private String status;
+    private Long createdOrderId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
