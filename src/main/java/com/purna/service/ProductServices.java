@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.apache.commons.text.similarity.JaroWinklerDistance;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -48,12 +49,13 @@ public class ProductServices {
      * database thread saturation completely. (This flawlessly mimics an enterprise Redis Cluster).
      */
 	@Transactional(readOnly = true)
-    @Cacheable(value = "available_listings", key = "#pageable.pageNumber")
+    @Cacheable(value = "market_listings", key = "#pageable.pageNumber")
 	public Page<ListingResponseDTO> getAvailableProducts(Pageable pageable){
 		return listingRepository.findByStatusAndIsDeletedFalse("active", pageable).map(this::mapToListingResponseDTO);
 	}
 	
 	@Transactional(readOnly = true)
+    @Cacheable(value = "product_details", key = "#id")
 	public ListingResponseDTO getListingById(Long id) {
 		return listingRepository.findById(id).map(this::mapToListingResponseDTO).orElseThrow(() -> new RuntimeException("Listing not found"));
 	}
@@ -89,6 +91,7 @@ public class ProductServices {
         return new PageImpl<>(fuzzyMatches.subList(start, end), pageable, fuzzyMatches.size());
     }
 	
+    @CacheEvict(value = {"market_listings", "product_details"}, allEntries = true)
 	public Listing addProductWithListing(ProductRequestDTO request, Long sellerId) {
 		Product globalProduct = productRepository.findByTitle(request.getTitle());
 
@@ -110,6 +113,8 @@ public class ProductServices {
                 .price(request.getPrice())
                 .minAcceptablePrice(request.getMinAcceptablePrice())
                 .quantity(request.getQuantity())
+                .yearsOld(request.getYearsOld())
+                .customImageUrls(request.getCustomImageUrls())
                 .status("active")
                 .build();
                 
@@ -133,8 +138,10 @@ public class ProductServices {
                 .sellerId(listing.getSeller() != null ? Long.valueOf(listing.getSeller().getId()) : null)
                 .product(listing.getProduct() != null ? mapToProductResponseDTO(listing.getProduct()) : null)
                 .price(listing.getPrice())
-                .minAcceptablePrice(listing.getMinAcceptablePrice())
+                .minAcceptablePrice(null) // HIDDEN FROM REGULAR USERS FOR PRIVACY
                 .quantity(listing.getQuantity())
+                .yearsOld(listing.getYearsOld())
+                .customImageUrls(listing.getCustomImageUrls())
                 .status(listing.getStatus())
                 .build();
     }

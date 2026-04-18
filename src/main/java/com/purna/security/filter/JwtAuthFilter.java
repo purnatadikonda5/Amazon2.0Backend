@@ -45,23 +45,38 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 return;
             }
 
-            String username = jwtUtil.extractUsername(token);
+            try {
+                String username = jwtUtil.extractUsername(token);
 
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                    if (jwtUtil.validateToken(token, username)) {
+                        java.util.List<String> roles = jwtUtil.extractRoles(token);
+                        java.util.List<org.springframework.security.core.authority.SimpleGrantedAuthority> authorities = new java.util.ArrayList<>();
+                        if (roles != null) {
+                            for (String role : roles) {
+                                authorities.add(new org.springframework.security.core.authority.SimpleGrantedAuthority(role));
+                            }
+                        }
 
-                if (jwtUtil.validateToken(token, username)) {
-
-                    UsernamePasswordAuthenticationToken authToken =
-                            new UsernamePasswordAuthenticationToken(
-                                    userDetails,
-                                    null,
-                                    userDetails.getAuthorities()
-                            );
-                    
-                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                        UsernamePasswordAuthenticationToken authToken =
+                                new UsernamePasswordAuthenticationToken(
+                                        new org.springframework.security.core.userdetails.User(username, "", authorities),
+                                        null,
+                                        authorities
+                                );
+                        
+                        SecurityContextHolder.getContext().setAuthentication(authToken);
+                    }
                 }
+            } catch (io.jsonwebtoken.ExpiredJwtException e) {
+                // Token cleanly expired, do not crash the Thread, simply reject the request with 401
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Security Violation: JWT Token has expired. Please login again.");
+                return;
+            } catch (Exception e) {
+                // Corrupted token
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Security Violation: Invalid JWT Token.");
+                return;
             }
         }
 

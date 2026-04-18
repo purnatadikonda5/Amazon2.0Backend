@@ -1,4 +1,5 @@
 package com.purna.service;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -95,16 +96,19 @@ public class OfferServices {
     }
 
     @Transactional(readOnly = true)
+    @org.springframework.cache.annotation.Cacheable(value = "seller_offers", key = "#sellerId + '-' + #pageable.pageNumber")
     public Page<OfferResponseDTO> getOffersForSeller(Long sellerId, Pageable pageable) {
         return offerRepository.findBySeller_Id(sellerId, pageable).map(this::mapToResponseDTO);
     }
 
     @Transactional(readOnly = true)
+    @org.springframework.cache.annotation.Cacheable(value = "buyer_offers", key = "#buyerId + '-' + #pageable.pageNumber")
     public Page<OfferResponseDTO> getOffersForBuyer(Long buyerId, Pageable pageable) {
         return offerRepository.findByBuyer_Id(buyerId, pageable).map(this::mapToResponseDTO);
     }
 
     @Transactional
+    @CacheEvict(value = {"market_listings", "seller_offers", "buyer_offers", "product_details"}, allEntries = true)
     public OfferResponseDTO updateOffer(Long sellerId, OfferUpdateRequestDTO request) {
         Offer offer = offerRepository.findById(request.getOfferId())
                 .orElseThrow(() -> new ResourceNotFoundException("Offer not found"));
@@ -122,8 +126,12 @@ public class OfferServices {
             case "accept":
                 deductInventory(offer);
                 offer.setStatus("accepted");
-                generateOrder(offer, offer.getOfferPrice());
-                break;
+                Order o = generateOrder(offer, offer.getOfferPrice());
+                offer = offerRepository.save(offer);
+                OfferResponseDTO responseDTO = mapToResponseDTO(offer);
+                responseDTO.setCreatedOrderId(o.getId());
+                messagingTemplate.convertAndSend("/topic/buyer/" + offer.getBuyer().getId(), responseDTO);
+                return responseDTO;
             case "reject":
                 offer.setStatus("rejected");
                 break;
@@ -145,6 +153,7 @@ public class OfferServices {
     }
 
     @Transactional
+    @CacheEvict(value = {"market_listings", "seller_offers", "buyer_offers", "product_details"}, allEntries = true)
     public OfferResponseDTO buyerUpdateOffer(Long buyerId, OfferUpdateRequestDTO request) {
         Offer offer = offerRepository.findById(request.getOfferId())
                 .orElseThrow(() -> new ResourceNotFoundException("Offer not found"));
@@ -162,8 +171,12 @@ public class OfferServices {
             case "accept":
                 deductInventory(offer);
                 offer.setStatus("accepted");
-                generateOrder(offer, offer.getCounterPrice());
-                break;
+                Order ob = generateOrder(offer, offer.getCounterPrice());
+                offer = offerRepository.save(offer);
+                OfferResponseDTO responseDTOb = mapToResponseDTO(offer);
+                responseDTOb.setCreatedOrderId(ob.getId());
+                messagingTemplate.convertAndSend("/topic/seller/" + offer.getSeller().getId(), responseDTOb);
+                return responseDTOb;
             case "reject":
                 offer.setStatus("rejected");
                 break;
@@ -182,11 +195,18 @@ public class OfferServices {
 
     private void deductInventory(Offer offer) {
         Listing listing = offer.getListing();
-        if (listing.getQuantity() == null || listing.getQuantity() < offer.getQuantity()) {
-            throw new InvalidOfferException("Cannot accept offer: Insufficient listing quantity.");
+        // Auto-heal legacy database entries that were instantiated before Quantity fields were introduced
+        if (listing.getQuantity() == null) {
+            listing.setQuantity(1);
         }
         
-        listing.setQuantity(listing.getQuantity() - offer.getQuantity());
+        Integer offerQuantity = offer.getQuantity() != null ? offer.getQuantity() : 1;
+
+        if (listing.getQuantity() < offerQuantity) {
+            throw new InvalidOfferException("Cannot accept offer: Insufficient listing quantity. Available: " + listing.getQuantity());
+        }
+        
+        listing.setQuantity(listing.getQuantity() - offerQuantity);
         
         if (listing.getQuantity() <= 0) {
             listing.setStatus("sold_out");
@@ -194,14 +214,14 @@ public class OfferServices {
         listingRepository.save(listing);
     }
 
-    private void generateOrder(Offer offer, Double finalPrice) {
+    private Order generateOrder(Offer offer, Double finalPrice) {
         Order order = Order.builder()
                 .buyer(offer.getBuyer())
                 .listing(offer.getListing())
                 .purchasePrice(finalPrice)
                 .status("completed")
                 .build();
-        orderRepository.save(order);
+        return orderRepository.save(order);
     }
 
     /**

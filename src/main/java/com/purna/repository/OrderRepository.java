@@ -7,8 +7,11 @@ import org.springframework.stereotype.Repository;
 
 import com.purna.model.Order;
 
+import org.springframework.data.jpa.repository.EntityGraph;
+
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long> {
 
+    @EntityGraph(attributePaths = {"buyer", "listing.seller", "listing.product"})
     Page<Order> findByBuyer_Id(Long buyer_Id, Pageable pageable);
 }

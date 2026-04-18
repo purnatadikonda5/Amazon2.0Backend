@@ -31,6 +31,7 @@ public class UserServices {
      * Look up the comprehensive history of all completed purchases the buyer made.
      */
     @Transactional(readOnly = true)
+    @org.springframework.cache.annotation.Cacheable(value = "user_orders", key = "#userId + '-' + #pageable.pageNumber")
     public Page<OrderResponseDTO> getCompletedOrders(Long userId, Pageable pageable) {
         return orderRepository.findByBuyer_Id(userId, pageable).map(this::mapToOrderResponseDTO);
     }
@@ -39,6 +40,7 @@ public class UserServices {
      * Look up every listing this specific seller currently has in the market.
      */
     @Transactional(readOnly = true)
+    @org.springframework.cache.annotation.Cacheable(value = "user_listings", key = "#userId + '-' + #pageable.pageNumber")
     public Page<ListingResponseDTO> getListedItems(Long userId, Pageable pageable) {
         return listingRepository.findBySeller_IdAndIsDeletedFalse(userId, pageable).map(this::mapToListingResponseDTO);
     }

@@ -11,20 +11,31 @@ import io.jsonwebtoken.security.Keys;
 @Component
 public class AuthUtil {
 
-    private final String SECRET = "mysecretkeymysecretkeymysecretkey123"; // 32+ chars
-    private final long EXPIRATION = 1000 * 60 * 60; // 1 hour
+    private final String SECRET = "mysecretkeymysecretkeymysecretkey123";
+    private final long EXPIRATION = 1000 * 60 * 60;
 
     private Key key() {
         return Keys.hmacShaKeyFor(SECRET.getBytes());
     }
 
-    public String generateToken(String username) {
+    public String generateToken(String username, java.util.List<String> roles) {
         return Jwts.builder()
                 .setSubject(username)
+                .claim("roles", roles)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION))
                 .signWith(key(), SignatureAlgorithm.HS256)
                 .compact();
+    }
+
+    @SuppressWarnings("unchecked")
+    public java.util.List<String> extractRoles(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(key())
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .get("roles", java.util.List.class);
     }
 
     public String extractUsername(String token) {

@@ -79,7 +79,14 @@ public class OfferController {
         Long sellerId = getAuthenticatedUserId();
         Pageable pageable = PageRequest.of(page, size);
         Page<OfferResponseDTO> responsePage = offerServices.getOffersForSeller(sellerId, pageable);
-        return ResponseEntity.ok(new OfferListResponseDTO(responsePage.getContent()));
+        OfferListResponseDTO payload = OfferListResponseDTO.builder()
+            .offers(responsePage.getContent())
+            .pageNumber(responsePage.getNumber())
+            .totalPages(responsePage.getTotalPages())
+            .totalElements(responsePage.getTotalElements())
+            .last(responsePage.isLast())
+            .build();
+        return ResponseEntity.ok(payload);
     }
 
     @GetMapping("/buyer")
@@ -89,7 +96,14 @@ public class OfferController {
         Long buyerId = getAuthenticatedUserId();
         Pageable pageable = PageRequest.of(page, size);
         Page<OfferResponseDTO> responsePage = offerServices.getOffersForBuyer(buyerId, pageable);
-        return ResponseEntity.ok(new OfferListResponseDTO(responsePage.getContent()));
+        OfferListResponseDTO payload = OfferListResponseDTO.builder()
+            .offers(responsePage.getContent())
+            .pageNumber(responsePage.getNumber())
+            .totalPages(responsePage.getTotalPages())
+            .totalElements(responsePage.getTotalElements())
+            .last(responsePage.isLast())
+            .build();
+        return ResponseEntity.ok(payload);
     }
 
     @PostMapping("/update")

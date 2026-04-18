@@ -12,4 +12,6 @@ public class ProductRequestDTO {
     private Integer quantity;
     private Double minAcceptablePrice;
     private Boolean isAvailable;
+    private Integer yearsOld;
+    private String customImageUrls;
 }

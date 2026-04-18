@@ -63,6 +63,14 @@ public class Listing {
 
     private String status; // active, sold_out, inactive
 
+    @org.hibernate.annotations.CreationTimestamp
+    private java.time.LocalDateTime createdAt;
+
+    private Integer yearsOld;
+    
+    @jakarta.persistence.Column(columnDefinition = "TEXT")
+    private String customImageUrls;
+
     @Builder.Default
     private Boolean isDeleted = false;
 
