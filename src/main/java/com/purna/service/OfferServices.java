@@ -47,6 +47,7 @@ public class OfferServices {
      * @return DTO representation of the newly created Offer.
      */
     @Transactional
+    @CacheEvict(value = {"market_listings", "seller_offers", "buyer_offers", "product_details", "user_listings"}, allEntries = true)
     public OfferResponseDTO submitOffer(Long buyerId, OfferSubmitRequestDTO request) {
         Listing listing = listingRepository.findById(request.getListingId())
                 .orElseThrow(() -> new ResourceNotFoundException("Listing not found"));
@@ -96,19 +97,19 @@ public class OfferServices {
     }
 
     @Transactional(readOnly = true)
-    @org.springframework.cache.annotation.Cacheable(value = "seller_offers", key = "#sellerId + '-' + #pageable.pageNumber")
+    // @org.springframework.cache.annotation.Cacheable(value = "seller_offers", key = "#sellerId + '-' + #pageable.pageNumber")
     public Page<OfferResponseDTO> getOffersForSeller(Long sellerId, Pageable pageable) {
         return offerRepository.findBySeller_Id(sellerId, pageable).map(this::mapToResponseDTO);
     }
 
     @Transactional(readOnly = true)
-    @org.springframework.cache.annotation.Cacheable(value = "buyer_offers", key = "#buyerId + '-' + #pageable.pageNumber")
+    // @org.springframework.cache.annotation.Cacheable(value = "buyer_offers", key = "#buyerId + '-' + #pageable.pageNumber")
     public Page<OfferResponseDTO> getOffersForBuyer(Long buyerId, Pageable pageable) {
         return offerRepository.findByBuyer_Id(buyerId, pageable).map(this::mapToResponseDTO);
     }
 
     @Transactional
-    @CacheEvict(value = {"market_listings", "seller_offers", "buyer_offers", "product_details"}, allEntries = true)
+    @CacheEvict(value = {"market_listings", "seller_offers", "buyer_offers", "product_details", "user_listings"}, allEntries = true)
     public OfferResponseDTO updateOffer(Long sellerId, OfferUpdateRequestDTO request) {
         Offer offer = offerRepository.findById(request.getOfferId())
                 .orElseThrow(() -> new ResourceNotFoundException("Offer not found"));
@@ -153,7 +154,7 @@ public class OfferServices {
     }
 
     @Transactional
-    @CacheEvict(value = {"market_listings", "seller_offers", "buyer_offers", "product_details"}, allEntries = true)
+    @CacheEvict(value = {"market_listings", "seller_offers", "buyer_offers", "product_details", "user_listings"}, allEntries = true)
     public OfferResponseDTO buyerUpdateOffer(Long buyerId, OfferUpdateRequestDTO request) {
         Offer offer = offerRepository.findById(request.getOfferId())
                 .orElseThrow(() -> new ResourceNotFoundException("Offer not found"));
@@ -179,6 +180,14 @@ public class OfferServices {
                 return responseDTOb;
             case "reject":
                 offer.setStatus("rejected");
+                break;
+            case "counter":
+                if (request.getCounterPrice() == null || request.getCounterPrice() <= 0) {
+                    throw new InvalidOfferException("A valid counterPrice must be provided when action is 'counter'.");
+                }
+                offer.setOfferPrice(request.getCounterPrice());
+                offer.setCounterPrice(null);
+                offer.setStatus("pending");
                 break;
             case "cancel":
                 offer.setStatus("cancelled");

@@ -91,7 +91,7 @@ public class ProductServices {
         return new PageImpl<>(fuzzyMatches.subList(start, end), pageable, fuzzyMatches.size());
     }
 	
-    @CacheEvict(value = {"market_listings", "product_details"}, allEntries = true)
+    @CacheEvict(value = {"market_listings", "product_details", "user_listings"}, allEntries = true)
 	public Listing addProductWithListing(ProductRequestDTO request, Long sellerId) {
 		Product globalProduct = productRepository.findByTitle(request.getTitle());
 

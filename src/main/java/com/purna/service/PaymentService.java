@@ -164,6 +164,7 @@ public class PaymentService {
      * performed prior (inventory reduction, order creation, success marks) are completely unwound/rolled-back
      * seamlessly by the MySQL engine automatically! Total security.
      */
+    @org.springframework.cache.annotation.CacheEvict(value = {"market_listings", "user_listings", "product_details", "user_orders"}, allEntries = true)
     @Transactional
     public PaymentStatusResponseDTO verifyAndUpdatePayment(PaymentVerificationRequestDTO verificationDto) {
         log.info("Verifying Webhook/API payment captured for Order: {}", verificationDto.getRazorpayOrderId());

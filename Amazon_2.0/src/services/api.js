@@ -1,10 +1,13 @@
 import axios from 'axios';
 
-// Create a globally configured Axios instance
+// ==========================================
+// Axios Instance — Centralized API Client
+// ==========================================
 const API = axios.create({
-    baseURL: '/api', 
+    baseURL: '/api',
 });
 
+// Request Interceptor: Attach JWT token to every request
 API.interceptors.request.use((req) => {
     const token = localStorage.getItem('accessToken');
     if (token) {
@@ -13,15 +16,16 @@ API.interceptors.request.use((req) => {
     return req;
 });
 
-// Interceptor: Automatically catch Expired or Orphaned Users (401/403) and forcefully logout
+// Response Interceptor: Auto-logout on 401/403
 API.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-            console.warn("Security Event: Invalid/Expired Session. Auto-Logging out...");
+            console.warn("Session expired. Logging out...");
             localStorage.removeItem('accessToken');
             localStorage.removeItem('refreshToken');
             localStorage.removeItem('user');
+            window.dispatchEvent(new Event('auth-change'));
             window.location.href = '/login';
         }
         return Promise.reject(error);
@@ -29,23 +33,20 @@ API.interceptors.response.use(
 );
 
 // ==========================================
-// 1. AUTHENTICATION & USERS
+// 1. AUTHENTICATION
 // ==========================================
 
 export const checkEmailExists = async (email) => {
-    // Fast O(1) Redis execution
     const response = await API.get(`/auth/check-email?email=${email}`);
-    return response.data; // true or false
+    return response.data;
 };
 
 export const signupUser = async (userData) => {
-    // userData = { name, email, password }
     const response = await API.post('/auth/signup', userData);
     return response.data;
 };
 
 export const loginUser = async (credentials) => {
-    // credentials = { email, password }
     const response = await API.post('/auth/login', credentials);
     if (response.data.accessToken) {
         localStorage.setItem('accessToken', response.data.accessToken);
@@ -62,49 +63,25 @@ export const logoutUser = async () => {
 };
 
 // ==========================================
-// 2. CLOUDINARY IMAGE UPLOAD (The "Multer" Alternative)
+// 2. IMAGE UPLOAD (Cloudinary)
 // ==========================================
 
 export const uploadImage = async (imageFile) => {
     const formData = new FormData();
     formData.append('file', imageFile);
-
     const response = await API.post('/upload/image', formData, {
-        headers: {
-            'Content-Type': 'multipart/form-data',
-        },
+        headers: { 'Content-Type': 'multipart/form-data' },
     });
-    return response.data.url; // Returns the secure Cloudinary string URL!
+    return response.data.url;
 };
 
 // ==========================================
 // 3. PRODUCTS & LISTINGS
 // ==========================================
 
-export const fetchUserOrders = async (page = 0, size = 10) => {
-    const response = await API.get(`/user/orders?page=${page}&size=${size}`);
-    return response.data;
-};
-
-export const fetchUserSellingListings = async (page = 0, size = 10) => {
-    const response = await API.get(`/user/selling?page=${page}&size=${size}`);
-    return response.data;
-};
-
-// Wallet Operations
-export const fetchWalletBalance = async () => {
-    const response = await API.get('/user/wallet');
-    return response.data;
-};
-
-export const withdrawWalletToBank = async () => {
-    const response = await API.post('/user/wallet/withdraw');
-    return response.data;
-};
-
 export const fetchAvailableListings = async (page = 0, size = 10) => {
     const response = await API.get(`/products?page=${page}&size=${size}`);
-    return response.data; 
+    return response.data;
 };
 
 export const fetchListingById = async (id) => {
@@ -117,23 +94,53 @@ export const createListing = async (listingData) => {
     return response.data;
 };
 
+/** Fuzzy search — uses Jaro-Winkler distance on the backend */
+export const searchProducts = async (query, page = 0, size = 10) => {
+    const response = await API.get(`/products/search?q=${encodeURIComponent(query)}&page=${page}&size=${size}`);
+    return response.data;
+};
+
 // ==========================================
-// 4. BARGAINING / NEGOTIATION SUBSYSTEM
+// 4. USER DATA (Orders, Selling, Wallet)
+// ==========================================
+
+export const fetchUserOrders = async (page = 0, size = 10) => {
+    const response = await API.get(`/user/orders?page=${page}&size=${size}`);
+    return response.data;
+};
+
+export const fetchUserSellingListings = async (page = 0, size = 10) => {
+    const response = await API.get(`/user/selling?page=${page}&size=${size}`);
+    return response.data;
+};
+
+export const fetchWalletBalance = async () => {
+    const response = await API.get('/user/wallet');
+    return response.data;
+};
+
+export const withdrawWalletToBank = async () => {
+    const response = await API.post('/user/wallet/withdraw');
+    return response.data;
+};
+
+// ==========================================
+// 5. BARGAINING / OFFERS
 // ==========================================
 
 export const submitBuyerOffer = async (offerData) => {
     const response = await API.post('/bargain/submit', offerData);
-    return response.data; 
+    return response.data;
 };
 
 export const fetchSellerOffers = async (page = 0, size = 10) => {
     const response = await API.get(`/bargain/seller?page=${page}&size=${size}`);
-    return response.data; 
+    return response.data;
 };
 
 export const fetchBuyerOffers = async (page = 0, size = 10) => {
     const response = await API.get(`/bargain/buyer?page=${page}&size=${size}`);
-    return response.data; 
+    return response.data;
 };
 
 export const sellerUpdateOffer = async (updateData) => {
@@ -147,12 +154,12 @@ export const buyerUpdateOffer = async (updateData) => {
 };
 
 // ==========================================
-// 5. RAZORPAY PAYMENT GATEWAY 
+// 6. RAZORPAY PAYMENTS
 // ==========================================
 
 export const createPaymentSession = async (paymentData) => {
     const response = await API.post('/payment/create', paymentData);
-    return response.data; 
+    return response.data;
 };
 
 export const verifyPaymentWebhook = async (verificationData) => {

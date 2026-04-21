@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { CreditCard, ShieldCheck, User, AlertCircle } from 'lucide-react';
 import { createPaymentSession, verifyPaymentWebhook } from '../services/api';
 
 export default function Payment() {
@@ -7,12 +8,11 @@ export default function Payment() {
   const [errorMessage, setErrorMessage] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   const product = location.state?.product;
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   useEffect(() => {
-    // Load Razorpay script dynamically
     const script = document.createElement('script');
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
     script.async = true;
@@ -22,101 +22,135 @@ export default function Payment() {
   const handlePayment = async () => {
     setStatus('processing');
     setErrorMessage('');
-    
+
     try {
-        const orderData = await createPaymentSession({
-          listingId: product.id, 
-          buyerId: user.id || 0, // Fallback if user object parse issue
-          amount: parseFloat(product.price),
-          idempotencyKey: "pay_rzp_" + Date.now(),
-          quantity: 1
-        });
+      const orderData = await createPaymentSession({
+        listingId: product.id,
+        buyerId: user.id || 0,
+        amount: parseFloat(product.price),
+        idempotencyKey: "pay_rzp_" + Date.now(),
+        quantity: 1
+      });
 
-        if (!orderData.razorpayOrderId) throw new Error("Gateway failed to return an order definition.");
+      if (!orderData.razorpayOrderId) throw new Error("Payment gateway failed to create order.");
 
-        const options = {
-            key: "rzp_test_SevHWfdpmcrBfL", // Real Test Key
-            amount: orderData.amount * 100, // paise
-            currency: "INR",
-            name: "BargainHub Marketplace",
-            description: "Checkout",
-            order_id: orderData.razorpayOrderId,
-            handler: async function (response) {
-                try {
-                    await verifyPaymentWebhook({
-                        razorpayOrderId: response.razorpay_order_id,
-                        razorpayPaymentId: response.razorpay_payment_id,
-                        razorpaySignature: response.razorpay_signature
-                    });
-                    navigate('/payment/status?success=true');
-                } catch(error) {
-                    setErrorMessage("Payment verification failed! " + error.message);
-                }
-            },
-            prefill: {
-                name: user.name || "Known Buyer",
-                email: user.email || "buyer@example.com",
-            },
-            theme: { color: "#3b82f6" } // matches primary blue color
-        };
+      const options = {
+        key: "rzp_test_SevHWfdpmcrBfL",
+        amount: orderData.amount * 100,
+        currency: "INR",
+        name: "BargainHub",
+        description: product.product?.title || "Checkout",
+        order_id: orderData.razorpayOrderId,
+        handler: async function (response) {
+          try {
+            await verifyPaymentWebhook({
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature
+            });
+            navigate('/payment/status?success=true');
+          } catch (error) {
+            setErrorMessage("Payment verification failed. Contact support.");
+            setStatus('idle');
+          }
+        },
+        prefill: {
+          name: user.name || "Buyer",
+          email: user.email || "buyer@example.com",
+        },
+        theme: { color: "#6366f1" }
+      };
 
-        const rzp = new window.Razorpay(options);
-        rzp.on('payment.failed', function (response){
-             setErrorMessage("Payment Failed: " + response.error.description);
-             setStatus('idle');
-        });
-        rzp.open();
-
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', function (response) {
+        setErrorMessage("Payment failed: " + response.error.description);
+        setStatus('idle');
+      });
+      rzp.open();
     } catch (error) {
-      console.error(error);
-      setErrorMessage("Payment Gateway Unavailable. " + (error.response?.data?.message || error.message));
+      setErrorMessage(error.response?.data?.message || error.message || "Payment gateway unavailable.");
       setStatus('idle');
     }
   };
 
   return (
-    <div style={{ maxWidth: '600px', margin: '2rem auto' }}>
+    <div style={{ maxWidth: '520px', margin: '3rem auto' }} className="animate-slideUp">
       <div className="card" style={{ padding: '2rem' }}>
-        <h1 style={{ marginBottom: '1.5rem', textAlign: 'center' }}>Checkout</h1>
-        
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
+          <div style={{
+            width: '48px', height: '48px', borderRadius: '50%',
+            background: 'linear-gradient(135deg, var(--primary), var(--success))',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 0.85rem'
+          }}>
+            <CreditCard style={{ color: '#fff', width: 20, height: 20 }} />
+          </div>
+          <h1 style={{ fontSize: '1.4rem', fontWeight: '700' }}>Checkout</h1>
+        </div>
+
+        {/* Error */}
         {errorMessage && (
-          <div style={{ padding: '1rem', backgroundColor: '#fee2e2', color: '#b91c1c', borderRadius: '0.5rem', marginBottom: '1rem' }}>
-            {errorMessage}
+          <div className="alert alert-error animate-fadeIn">
+            <AlertCircle className="icon-sm" /> {errorMessage}
           </div>
         )}
 
         {!product ? (
-          <div style={{ padding: '1rem', textAlign: 'center', color: '#6b7280' }}>
-            No product selected. Please go back and select an item to buy.
+          <div className="empty-state">
+            <div className="empty-icon">🛒</div>
+            <h3>No product selected</h3>
+            <p>Go back and select an item to purchase.</p>
           </div>
         ) : (
           <>
-            <div style={{ backgroundColor: 'var(--bg-color)', padding: '1.5rem', borderRadius: '0.5rem', marginBottom: '1.5rem' }}>
-              <h3 style={{ marginBottom: '1rem' }}>Order Summary</h3>
+            {/* Order Summary */}
+            <div style={{
+              background: 'var(--bg-elevated)', padding: '1.25rem', borderRadius: 'var(--radius-lg)',
+              border: '1px solid var(--border)', marginBottom: '1rem'
+            }}>
+              <h3 style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Order Summary
+              </h3>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                <span>{product.product?.title || 'Unknown Item'}</span>
-                <span>${product.price}</span>
+                <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{product.product?.title || 'Product'}</span>
+                <span style={{ fontWeight: '600' }}>₹{product.price?.toLocaleString('en-IN')}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border-color)', paddingTop: '0.5rem', marginTop: '0.5rem', fontWeight: 'bold' }}>
-                <span>Total</span>
-                <span style={{ color: 'var(--primary-color)', fontSize: '1.2rem' }}>${product.price}</span>
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.6rem', marginTop: '0.5rem', display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ fontWeight: '700' }}>Total</span>
+                <span style={{ fontWeight: '700', color: 'var(--primary)', fontSize: '1.15rem' }}>₹{product.price?.toLocaleString('en-IN')}</span>
               </div>
             </div>
 
-            <div style={{ backgroundColor: 'var(--bg-color)', padding: '1.5rem', borderRadius: '0.5rem', marginBottom: '2rem' }}>
-              <h3 style={{ marginBottom: '1rem' }}>User Details</h3>
-              <p style={{ marginBottom: '0.5rem' }}><strong>Name:</strong> {user.name || 'N/A'}</p>
-              <p><strong>Email:</strong> {user.email || 'N/A'}</p>
+            {/* User Info */}
+            <div style={{
+              background: 'var(--bg-elevated)', padding: '1rem 1.25rem', borderRadius: 'var(--radius-lg)',
+              border: '1px solid var(--border)', marginBottom: '1.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem'
+            }}>
+              <User className="icon" style={{ color: 'var(--text-muted)' }} />
+              <div>
+                <p style={{ fontWeight: '600', fontSize: '0.9rem' }}>{user.name || 'N/A'}</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{user.email || 'N/A'}</p>
+              </div>
             </div>
 
-            <button 
-              className="btn btn-success" 
-              style={{ width: '100%', fontSize: '1.2rem', padding: '1rem' }}
+            <button
+              className="btn btn-success btn-lg"
+              style={{ width: '100%', fontSize: '1rem' }}
               onClick={handlePayment}
               disabled={status === 'processing'}
+              id="pay-btn"
             >
-              {status === 'processing' ? 'Processing...' : 'Proceed to Payment (Razorpay)'}
+              {status === 'processing' ? (
+                <><div className="spinner spinner-sm" style={{ borderTopColor: '#fff', borderColor: 'rgba(255,255,255,0.3)' }}></div> Processing...</>
+              ) : (
+                <><ShieldCheck className="icon" /> Pay ₹{product.price?.toLocaleString('en-IN')}</>
+              )}
             </button>
+
+            <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '0.85rem' }}>
+              🔒 Secured by Razorpay. Your payment info is encrypted.
+            </p>
           </>
         )}
       </div>
